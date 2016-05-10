@@ -16,49 +16,71 @@ typedef struct {
 	int id;
 } Block;
 
+void setHeader(char* heap, int size, int alloc) {
+	*heap = alloc + '\0';
+	heap++;
+	*heap = size + '\0';
+	printf("%d\n", (*heap) - '\0');
+}
+
 
 void parseline(char* com, char** arg);
 
-int getIndex(int size) {
-	return (int) ceil(log2((double) size);
+void addBlock(char* heap, int size) {
+	
 }
 
-void allocate(int size, Block** freeList, Block* allocBlocks, int count, int allocSize) {
-	int index = getIndex(size);
-	printf("%d", index);
-	while(index < 8) {
-		for(int i = 0; i < 100; i++) {
-			if(freeList[index][i].id == -1) {
-				break;
-			}
-			else if(freeList[index][i].size <= size) {
-				allocBlocks[allocSize].pointer = freeList[index][i].pointer;
-				allocBlocks[allocSize].id = count;
-				allocBlocks[allocSize].size = size;
-				if(freeList[index][i].size < size) {
-					int newSize = freeList[index][i].size - size;
-					int newI = getIndex(newSize);
-					for(int j = 0; j < 100; j++) {
-						if(freeList[newI][j].id == 0) {
-						}
-					}
-					
-				}
+
+void allocate(char* heap, int size, int count) {
+	char* start = heap;
+	while(heap < start + 400) {
+		char* temp = heap;
+		++temp;
+		int temp2 = (*temp) - '\0';
+		if(*heap - '\0' == 0) {
+			heap++;
+			if(*heap - '\0' >= size) {
+				heap--;
+				int tempInt = 1;
+				*heap = tempInt + '\0';
+				printf("%d\n", count);
 				count++;
-				freeList[index][i].id = 0;
-				index = 100;
+				if(*(heap + 1)- '\0' > size) {
+					int old = *(heap + 1) - '\0';
+					*(heap + 1) = size + '\0';
+					int newSize = old - 2 - size;
+					tempInt--;
+					printf("%d\n", newSize);
+					*(heap + 2 + size) =  tempInt + '\0';
+					*(heap + 3 + size) = newSize + '\0';
+				}
 				break;
 			}
 		}
-		index++;
-		
+		--temp;
+		heap = temp;
+		heap += temp2 + 2;
 	}
-
 }
 
-void blockList(Block** freeList, Block* allocBlocks);
+void blockList(char* heap) {
+	char* start = heap;
+	printf("Size\tAlloc\tStart\tEnd\n");
+	while(heap < start + 400) {
+		int size = *(heap + 1) - '\0';
+		printf("%d\t", size);
+		if(*(heap) - '\0' == 0) {
+			printf("no\t");
+		}
+		else {
+			printf("yes\t");
+		}
+		printf("%p\t%p\n", heap, heap + size + 1);
+		heap += size + 2;
+	}
+}
 
-void run(char* heap, Block** freeList, Block* allocBlocks, int count, int allocSize) {
+void run(char* heap, int count) {
 	char *command[1024];
 
 	char input[1024];
@@ -75,12 +97,13 @@ void run(char* heap, Block** freeList, Block* allocBlocks, int count, int allocS
 	}
 	else if(strcmp(command[0], "allocate") == 0) {
 		// allocate
-		allocate(atoi(command[1]), freeList, allocBlocks, count, allocSize);
+		allocate(heap, atoi(command[1]), count);
 	}
 	else if(strcmp(command[0], "free") == 0) {
 		// free
 	}
 	else if(strcmp(command[0], "blocklist") == 0) {
+		blockList(heap);
 		// blocklist
 	}
 	else if(strcmp(command[0], "writeheap") == 0) {
@@ -90,18 +113,21 @@ void run(char* heap, Block** freeList, Block* allocBlocks, int count, int allocS
 
 int main()
 {	
-	char* heap = malloc(sizeof(char)*256);
-	Block freeList[8][100];
-	for(int i = 0; i < 8; i++) {
-		for(int j = 0; j < 100; j++) {
-			freeList[i][j].id = 0;
-		}
+	char* heap = malloc(400);
+	printf("%p\n", heap);
+	char* ptr = heap;
+	// First block's header:
+	int size = 127;
+	int i;
+	for(i = 129; i < 400; i+= 129) {
+		setHeader(ptr, size, 0);
+		ptr += 129;
 	}
-	Block allocBlocks[128];
-	int allocSize = 0;
+	setHeader(ptr, (400 - i - 129), 0);
+	
 	int count = 1; // keep track of largest id assigned
 	while(i) {
-		run(heap, freeList, allocBlocks, count, allocSize);
+		run(heap, count);
 	}
 	free(heap);
 	return 0;
