@@ -41,15 +41,14 @@ void allocate(char* heap, int size, int count) {
 			heap++;
 			if(*heap - '\0' >= size) {
 				heap--;
-				int tempInt = 1;
-				*heap = tempInt + '\0';
+				*heap = count + '\0';
 				printf("%d\n", count);
 				count++;
 				if(*(heap + 1)- '\0' > size) {
+					int tempInt = 0;
 					int old = *(heap + 1) - '\0';
 					*(heap + 1) = size + '\0';
 					int newSize = old - 2 - size;
-					tempInt--;
 					printf("%d\n", newSize);
 					*(heap + 2 + size) =  tempInt + '\0';
 					*(heap + 3 + size) = newSize + '\0';
@@ -60,6 +59,44 @@ void allocate(char* heap, int size, int count) {
 		--temp;
 		heap = temp;
 		heap += temp2 + 2;
+	}
+}
+
+void freeBlock(char* heap, int id) {
+	char* start = heap;
+	int found = 0;
+	while(heap < start + 400) {
+		if(*(heap) - '\0' == id) {
+			int tempInt = 0;
+			*(heap) = tempInt + '\0';
+			found = 1;
+			break;
+		}
+		heap += *(heap + 1) - '\0' + 2;
+	}
+	if(found == 0) {
+		printf("ID not found\n");
+	}
+}
+
+void writeHeap(char* heap, int id, char* letter, int n) {
+	char* start = heap;
+	int found = 0;
+	while(heap < start + 400) {
+		if(*(heap) - '\0' == id) {
+			heap += 2;
+			int i;
+			for(i = 0; i < n; i++) {
+				*(heap) = *letter;
+				heap++;
+			}
+			found = 1;
+			break;
+		}
+		heap += *(heap + 1) - '\0' + 2;
+	}
+	if(found == 0) {
+		printf("ID not found\n");
 	}
 }
 
@@ -80,6 +117,29 @@ void blockList(char* heap) {
 	}
 }
 
+void printHeap(char* heap, int id, int n) {
+	char* start = heap;
+	int found = 0;
+	while(heap < start + 400) {
+		if(*(heap) - '\0' == id) {
+			heap += 2;
+			int i;
+			for(i = 0; i < n; i++) {
+				printf("%c", *(heap));
+				heap++;
+			}
+			printf("\n");
+			found = 1;
+			break;
+		}
+		heap += *(heap + 1) - '\0' + 2;
+	}
+	if(found == 0) {
+		printf("ID not found\n");
+	}
+
+}
+
 void run(char* heap, int count) {
 	char *command[1024];
 
@@ -96,18 +156,24 @@ void run(char* heap, int count) {
 		exit(0);
 	}
 	else if(strcmp(command[0], "allocate") == 0) {
-		// allocate
+		// allocate DONE
 		allocate(heap, atoi(command[1]), count);
 	}
 	else if(strcmp(command[0], "free") == 0) {
-		// free
+		freeBlock(heap, atoi(command[1]));
+		// free DONE
 	}
 	else if(strcmp(command[0], "blocklist") == 0) {
 		blockList(heap);
-		// blocklist
+		// blocklist DONE
 	}
 	else if(strcmp(command[0], "writeheap") == 0) {
+		writeHeap(heap, atoi(command[1]), command[2], atoi(command[3]));
 		// writeheap
+	}
+	else if(strcmp(command[0], "printheap") == 0) {
+		printHeap(heap, atoi(command[1]), atoi(command[2]));
+		// printheap
 	}
 }
 
