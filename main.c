@@ -5,6 +5,7 @@
 #include <string.h>
 
 void setHeader(char* heap, int size, int alloc);
+int getSize(char* heap);
 void run(char* heap, int *count);
 void parseline(char* com, char** arg);
 void allocate(char* heap, int size, int *count);
@@ -17,6 +18,7 @@ int main()
 {
 	char* heap = malloc(400);
 	char* ptr = heap;
+	/*
 	// First block's header, partitioned:
 	int size = 127; //max user size
 	int i;
@@ -25,8 +27,10 @@ int main()
 		ptr += 129;
 	}
 	setHeader(ptr, (400 - i - 129), 0);
-
+	*/
+	setHeader(ptr, 400, 0);
 	int count = 1; // keep track of largest id assigned
+	int i = 1;
 	while(i) {
 		run(heap, &count); //pass count as program executes
 	}
@@ -77,28 +81,48 @@ void parseline(char* com, char** arg){
 }
 
 int ctoi(char* c){ //char* to int
-  return ((int)*c - '\0');
+  return (int)*c;
 }
 
 char itoc(int n){ //int to char
   return (n + '\0');
 }
 
+int getSize(char* heap) {
+	int first = ctoi(heap + 1);
+	if(first < 0) {
+		first = 128 + 128 + first;
+	}
+	int second = ctoi((heap + 2));
+	if(second < 0) {
+		second = 128 + 128 + second;
+	}
+	return first + second;
+}
+
 void setHeader(char* heap, int size, int alloc) {
 	*heap = itoc(alloc);
 	heap++;
-	*heap = itoc(size);
+	
+	if(size <= 255)  {
+		*heap = itoc(size);
+		*(heap + 1) = itoc(0);
+	}
+	else {
+		int overflow = size - 255;
+		*heap = itoc(255); 
+		*(heap + 1) = itoc(overflow);
+	}
 	//printf("%d\n", ctoi(heap));
 }
 
 void allocate(char* heap, int size, int *count) {
 	char* start = heap; // start is equal heap ptr
-	while(heap < start + 400) {  //while iterating heap ptr is less than 400 bytes
+		while(heap < start + 400) {  //while iterating heap ptr is less than 400 bytes
 		char* temp = heap;
-		++temp;
-		int temp2 = ctoi(temp);
+		int temp2 = getSize(heap);
 		if(ctoi(heap) == 0) { //if allocate/blockid header is unallocated
-			if(ctoi(heap + 1) >= size) { //check size header, if greater than user block size
+			if(getSize(heap) >= size) { //check size header, if greater than user block size
 				*heap = itoc(*count); //change blockid to count
 				printf("%d\n", *count);
 				(*count)++; //increment for next block id
@@ -107,19 +131,19 @@ void allocate(char* heap, int size, int *count) {
           			case 2: if user size is equal to header block size
          			case 3: if user size is 125 or 126?
 				*/
-				if(ctoi(heap + 1) > size) { //case 1
-          				int old = ctoi(heap + 1);  //get old size header
-          				*(heap + 1) = itoc(size);  //change size header to user size
-          				int newSize = old - 2 - size; //newsize is old - header size - user size
-          				*(heap + 2 + size) =  itoc(0); //set new header alloc/blockid
-          				*(heap + 3 + size) = itoc(newSize); //new header size
+				if(getSize(heap) > size) { //case 1
+          				int old = getSize(heap);  //get old size header
+					setHeader(heap, size, (*count) - 1); // change size header to user size
+          				int newSize = old - size; //newsize is old - header size - user size
+					// create new block:
+					heap += size + 3;
+					setHeader(heap, newSize, 0);
 				} //else case 2
 				break;
 			}
 		}
-		--temp;
 		heap = temp;
-		heap += temp2 + 2;
+		heap += temp2 + 3;
 	}
 }
 
@@ -133,7 +157,7 @@ void freeBlock(char* heap, int id) {
 			found = 1;
 			break;
 		}
-		heap += ctoi(heap + 1) + 2;
+		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
 		printf("ID not found\n");
@@ -145,7 +169,7 @@ void writeHeap(char* heap, int id, char* letter, int n) {
 	int found = 0;
 	while(heap < start + 400) {
 		if(ctoi(heap) == id) {
-			heap += 2;
+			heap += 3;
 			int i;
 			for(i = 0; i < n; i++) {
 				*(heap) = *letter;
@@ -154,7 +178,7 @@ void writeHeap(char* heap, int id, char* letter, int n) {
 			found = 1;
 			break;
 		}
-		heap += ctoi(heap + 1) + 2;
+		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
 		printf("ID not found\n");
@@ -165,7 +189,7 @@ void blockList(char* heap) {
 	char* start = heap;
 	printf("Size\tAlloc\tStart\t\tEnd\n");
 	while(heap < start + 400) {
-		int size = ctoi(heap + 1);
+		int size = getSize(heap);
 		printf("%d\t", size);
 		if(ctoi(heap) == 0) {
 			printf("No\t");
@@ -173,8 +197,8 @@ void blockList(char* heap) {
 		else {
 			printf("Yes\t");
 		}
-		printf("0x%p\t0x%p\n", heap, heap + size + 1);
-		heap += size + 2;
+		printf("0x%p\t0x%p\n", heap, heap + size + 2);
+		heap += size + 3;
 	}
 }
 
@@ -183,7 +207,7 @@ void printHeap(char* heap, int id, int n) {
 	int found = 0;
 	while(heap < start + 400) {
 		if(ctoi(heap) == id) {
-			heap += 2;
+			heap += 3;
 			int i;
 			for(i = 0; i < n; i++) {
 				printf("%c", *(heap));
@@ -193,7 +217,7 @@ void printHeap(char* heap, int id, int n) {
 			found = 1;
 			break;
 		}
-		heap += ctoi(heap + 1) + 2;
+		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
 		printf("ID not found\n");
