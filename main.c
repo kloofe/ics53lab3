@@ -28,7 +28,7 @@ int main()
 	}
 	setHeader(ptr, (400 - i - 129), 0);
 	*/
-	setHeader(ptr, 400, 0);
+	setHeader(ptr, 397, 0);
 	int count = 1; // keep track of largest id assigned
 	int i = 1;
 	while(i) {
@@ -80,7 +80,7 @@ void parseline(char* com, char** arg){
 	arg[index+1] = NULL;
 }
 
-int ctoi(char* c){ //char* to int
+int ctoi(char* c){ //char*' to int
   return (int)*c;
 }
 
@@ -88,7 +88,7 @@ char itoc(int n){ //int to char
   return (n + '\0');
 }
 
-int getSize(char* heap) {
+int getSize(char* heap) { //get payload size
 	int first = ctoi(heap + 1);
 	if(first < 0) {
 		first = 128 + 128 + first;
@@ -103,14 +103,14 @@ int getSize(char* heap) {
 void setHeader(char* heap, int size, int alloc) {
 	*heap = itoc(alloc);
 	heap++;
-	
+
 	if(size <= 255)  {
 		*heap = itoc(size);
 		*(heap + 1) = itoc(0);
 	}
 	else {
 		int overflow = size - 255;
-		*heap = itoc(255); 
+		*heap = itoc(255);
 		*(heap + 1) = itoc(overflow);
 	}
 	//printf("%d\n", ctoi(heap));
@@ -118,9 +118,9 @@ void setHeader(char* heap, int size, int alloc) {
 
 void allocate(char* heap, int size, int *count) {
 	char* start = heap; // start is equal heap ptr
-		while(heap < start + 400) {  //while iterating heap ptr is less than 400 bytes
-		char* temp = heap;
-		int temp2 = getSize(heap);
+	while(heap < start + 400) {  //while iterating heap ptr is less than 400 bytes
+	char* temp = heap;
+	int temp2 = getSize(heap);
 		if(ctoi(heap) == 0) { //if allocate/blockid header is unallocated
 			if(getSize(heap) >= size) { //check size header, if greater than user block size
 				*heap = itoc(*count); //change blockid to count
@@ -128,13 +128,12 @@ void allocate(char* heap, int size, int *count) {
 				(*count)++; //increment for next block id
 				/*
 			        case 1: if user size is less than header block size + header size
-          			case 2: if user size is equal to header block size
-         			case 3: if user size is 125 or 126?
+          			case 2: if user size is equal to header block size + header size
 				*/
-				if(getSize(heap) > size) { //case 1
+				if(getSize(heap) > size + 3) { //case 1: never split if no space for header and size > 0
           				int old = getSize(heap);  //get old size header
 					setHeader(heap, size, (*count) - 1); // change size header to user size
-          				int newSize = old - size; //newsize is old - header size - user size
+          				int newSize = old - 3 - size; //newsize is old - header size - user size
 					// create new block:
 					heap += size + 3;
 					setHeader(heap, newSize, 0);
@@ -160,7 +159,7 @@ void freeBlock(char* heap, int id) {
 		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
-		printf("ID not found\n");
+		printf("Block ID not found\n");
 	}
 }
 
@@ -181,7 +180,7 @@ void writeHeap(char* heap, int id, char* letter, int n) {
 		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
-		printf("ID not found\n");
+		printf("Block ID not found\n");
 	}
 }
 
@@ -189,8 +188,8 @@ void blockList(char* heap) {
 	char* start = heap;
 	printf("Size\tAlloc\tStart\t\tEnd\n");
 	while(heap < start + 400) {
-		int size = getSize(heap);
-		printf("%d\t", size);
+		int size = getSize(heap); //get payload size
+		printf("%d\t", size + 3); //print size + 3 byte header
 		if(ctoi(heap) == 0) {
 			printf("No\t");
 		}
@@ -220,6 +219,6 @@ void printHeap(char* heap, int id, int n) {
 		heap += getSize(heap) + 3;
 	}
 	if(found == 0) {
-		printf("ID not found\n");
+		printf("Block ID not found\n");
 	}
 }
