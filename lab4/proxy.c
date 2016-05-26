@@ -1,11 +1,12 @@
 #include "csapp.h"
 
 void read_request(rio_t *rp) {
-	char buf[1024];
+	char buf[MAXLINE];
 	
-	Rio_readlineb(rp, buf, 1024);
+	Rio_readlineb(rp, buf, MAXLINE);
+`	printf("Reading request:\n\n");
 	while(strcmp(buf, "\r\n")) {
-		Rio_readlineb(rp, buf, 1024);
+		Rio_readlineb(rp, buf, MAXLINE);
 		printf("line: %s", buf);
 	}
 	return;
@@ -13,19 +14,19 @@ void read_request(rio_t *rp) {
 
 void foo(int fd) {
 	struct stat sbuf;
-	char buf[1024], method[1024], uri[1024], version[1024];
-	char filename[1024], cgiargs[1024];
+	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+	char filename[MAXLINE], cgiargs[MAXLINE];
 	rio_t rio;
 
 	Rio_readinitb(&rio, fd);
-	Rio_readlineb(&rio, buf, 1024);
+	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s %s %s", method, uri, version);
 	read_request(rio);
 }
 
 int main(int argc, char **argv) {
 	int listenfd, connfd;
-	char hostname[1024], port[1024];
+	char hostname[MAXLINE], port[MAXLINE];
 	socklen_t clientlen;
 	struct sockaddr_storage clientaddr;
 
