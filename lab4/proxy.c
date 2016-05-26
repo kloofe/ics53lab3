@@ -5,7 +5,7 @@ void read_request(rio_t *rp) {
 	
 	Rio_readlineb(rp, buf, MAXLINE);
 	printf("Reading request:\n\n");
-	while(1) {
+	while(strcmp(buf, "This is a test.\n")) {
 		Rio_readlineb(rp, buf, MAXLINE);
 		printf("line: %s", buf);
 	}
@@ -23,7 +23,6 @@ void foo(int fd, char* hostname, char* port) {
 	Rio_readinitb(&rio, fd);
 	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s %s %s", method, uri, version);
-/*
 	serverfd = Open_clientfd(hostname, port);
 	printf("num: %d\n", serverfd);
 	Rio_writen(serverfd, method, strlen(method));
@@ -35,9 +34,9 @@ void foo(int fd, char* hostname, char* port) {
 	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s", temp);
 	printf("WHAT IS THIS: %s", temp);
-*/	
+	
 
-	read_request(&rio);
+	//read_request(&rio);
 }
 
 int main(int argc, char **argv) {
