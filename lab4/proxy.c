@@ -6,7 +6,7 @@ void read_request(rio_t *rp) {
 	Rio_readlineb(rp, buf, 1024);
 	while(strcmp(buf, "\r\n")) {
 		Rio_readlineb(rp, buf, 1024);
-		printf("%s", buf);
+		printf("line: %s", buf);
 	}
 	return;
 }
