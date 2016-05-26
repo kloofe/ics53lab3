@@ -1,5 +1,16 @@
 #include "csapp.h"
 
+void read_request(rio_t *rp) {
+	char buf[1024];
+	
+	Rio_readlineb(rp, buf, 1024);
+	while(strcmp(buf, "\r\n")) {
+		Rio_readlineb(rp, buf, 1024);
+		printf("%s", buf);
+	}
+	return;
+}
+
 void foo(int fd) {
 	struct stat sbuf;
 	char buf[1024], method[1024], uri[1024], version[1024];
@@ -9,7 +20,7 @@ void foo(int fd) {
 	Rio_readinitb(&rio, fd);
 	Rio_readlineb(&rio, buf, 1024);
 	sscanf(buf, "%s %s %s", method, uri, version);
-	printf("%s %s %s\n", method, uri, version);
+	read_request(rio);
 }
 
 int main(int argc, char **argv) {
