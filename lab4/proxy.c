@@ -15,6 +15,7 @@ void read_request(rio_t *rp) {
 void parse_uri(char* uri, char* hostname, char* port) {
 	char substr[MAXLINE];
 	strncpy(substr, uri + 7, strlen(uri));
+	strncpy(substr, substr, (int) (strchr(substr, "/") - substr));
 	printf("substr: %s hostname: %s \n", substr, uri);
 	strcpy(hostname, substr);
 	strcpy(port, "80"); // default for now
