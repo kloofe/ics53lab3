@@ -12,19 +12,27 @@ void read_request(rio_t *rp) {
 	return;
 }
 
-void foo(int fd, char* hostname, char* port) {
+void parse_uri(char* uri, char* hostname, char* port) {
+	char substr[MAXLINE];
+	strncpy(substr, uri + 7, strlen(uri));
+	printf("substr: %s hostname: %s \n", substr, uri);
+	strcpy(hostname, substr);
+	strcpy(port, "80"); // default for now
+}
+
+void foo(int fd) {
 	struct stat sbuf;
 	int serverfd;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
+	char hostname[MAXLINE], port[MAXLINE];
 	char temp[MAXLINE];
-	char filename[MAXLINE], cgiargs[MAXLINE];
 	rio_t rio;
 
 	Rio_readinitb(&rio, fd);
 	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s %s %s", method, uri, version);
-	serverfd = Open_clientfd(uri, 80);
-	printf("num: %d\n", serverfd);
+	parse_uri(uri, hostname, port);
+	serverfd = Open_clientfd(uri, "80");
 	Rio_writen(serverfd, method, strlen(method));
 	Rio_writen(serverfd, " ", strlen(" "));
 	Rio_writen(serverfd, uri, strlen(uri));
@@ -48,7 +56,6 @@ int main(int argc, char **argv) {
 	if(argc != 2) {
 		exit(1);
 	}
-	
 	listenfd = Open_listenfd(argv[1]);
 	while(1) {
 		clientlen = sizeof(clientaddr);
