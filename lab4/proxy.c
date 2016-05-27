@@ -23,7 +23,7 @@ void foo(int fd, char* hostname, char* port) {
 	Rio_readinitb(&rio, fd);
 	Rio_readlineb(&rio, buf, MAXLINE);
 	sscanf(buf, "%s %s %s", method, uri, version);
-	serverfd = Open_clientfd(hostname, port);
+	serverfd = Open_clientfd(uri, 80);
 	printf("num: %d\n", serverfd);
 	Rio_writen(serverfd, method, strlen(method));
 	Rio_writen(serverfd, " ", strlen(" "));
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
 		connfd = Accept(listenfd, (SA *)&clientaddr, &clientlen);
 		Getnameinfo((SA *) &clientaddr, clientlen, hostname, 1024, port, 1024, 0);
 		printf("Accepted connection from (%s, %s)\n", hostname, port);
-		foo(connfd, hostname, port);
+		foo(connfd);
 		Close(connfd);
 	}
 	return 0;
