@@ -1,34 +1,26 @@
 #include "csapp.h"
 
-void read_request(rio_t *rp) {
-	char buf[MAXLINE];
-	
-	Rio_readlineb(rp, buf, MAXLINE);
-	printf("Reading request:\n\n");
-	while(strcmp(buf, "This is a test.\n")) {
-		Rio_readlineb(rp, buf, MAXLINE);
-		printf("line: %s", buf);
+void parse_uri(char* uri, char* hostname) {
+	//parse uri (which will then be path)
+	char substr[MAXLINE] = {};
+	char *temp, *uritemp;
+	uritemp = uri+7;//assume uri has http://
+	temp = strchr(uritemp, '/');
+	if (temp != NULL){
+		strncpy(substr, temp, strlen(temp));
+		strncpy(uri, substr, strlen(uri));
+		printf("substr: %s uri: %s \n", substr, uri);
 	}
-	return;
-}
-
-void parse_uri(char* uri, char* hostname, char* port) {
-	char substr[MAXLINE];
-	strncpy(substr, uri + 7, strlen(uri));
-	strncpy(substr, substr, (int) (strchr(substr, "/") - substr));
-	printf("substr: %s hostname: %s \n", substr, uri);
-	strcpy(hostname, substr);
-	strcpy(port, "80"); // default for now
 }
 
 void foo(int fd) {
-	struct stat sbuf;
 	int serverfd;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-	char hostname[MAXLINE], port[MAXLINE];
+	char hostname[MAXLINE];
 	char request[MAXLINE] = {};
-	char temp[MAXLINE];
-	int n;	
+	char temp[MAXLINE]= {};
+	int n;
+	char contentlength[20];	
 	rio_t rio;
 
 	Rio_readinitb(&rio, fd);
@@ -36,11 +28,11 @@ void foo(int fd) {
 	sscanf(buf, "%s %s %s", method, uri, version);
  	Rio_readlineb(&rio, buf, MAXLINE);//Host: web:port line if 1.1 
 	sscanf(buf, "Host: %s", hostname);
-	printf("debug header request: %s, %s, %s, %s", method, uri, version, hostname);
+	printf("debug header request: %s, %s, %s, %s\n", method, uri, version, hostname);
 	
 	//loop through rest of request
  	while(1){
-	//	printf("line: %s", buf);
+		printf("buf: %s\n", buf);
 		if ((n = Rio_readlineb(&rio, buf, MAXLINE)) <= 0){
 			printf("Can't read request from client to end server\n");
 			fflush(stdout);
@@ -56,15 +48,25 @@ void foo(int fd) {
 		printf("Non-get request\n");
 		return;
 	}
-	//need to parse here
-	//parse_uri(uri, hostname, port);
-	strcpy(temp, "GET /~harris/test.html HTTP/1.1\r\nHost: www.ics.uci.edu\r\n\r\n");
-	printf("temp: %zd\n",strlen(temp));
-	serverfd = Open_clientfd("www.ics.uci.edu", "80"); //connect to webserver
+	//parsing here
+	parse_uri(uri, hostname); //replace uri with path
+	printf("uri after parse: %s\n", uri);
+	strcpy(temp, "GET ");
+	strcat(temp, uri);
+	strcat(temp, " ");
+	strcat(temp, version);
+	strcat(temp, "\r\nHost: ");
+	strcat(temp, hostname);
+//	strcat(temp, "\r\n\r\n");
+	strcat(temp, "\r\nConnection: close\r\n\r\n");
+//	strcpy(temp, "GET /~harris/test.html HTTP/1.1\r\nHost: www.ics.uci.edu\r\n\r\n");
+	printf("temp: %s\n",temp);
+	printf("templen: %zd\n",strlen(temp));
+	serverfd = Open_clientfd(hostname, "80"); //connect to webserver
  	
 	//send request to end server
  	Rio_writen(serverfd, temp, strlen(temp));
-	Rio_writen(serverfd, request, strlen(request));
+	//Rio_writen(serverfd, request, strlen(request)); //not sure if to add all header request....
 	
 	//opens empty read buffer associated to serverfd
 	Rio_readinitb(&rio, serverfd);
@@ -72,6 +74,7 @@ void foo(int fd) {
 	//grab first line to check if ok header response
 	Rio_readlineb(&rio, buf, MAXLINE); 
 	if (strstr(buf, "OK") == NULL){
+		printf("Header response not 200, : %s\n", buf);
 		Close(serverfd);
 		return;
 	}
@@ -79,17 +82,20 @@ void foo(int fd) {
 	//prepare for reading rest of header.. if has content-length keep
 	while(1){
 		Rio_readlineb(&rio, buf, MAXLINE);
-		printf("%s", buf);
+		printf("head: %s", buf);
 		if(strcmp(buf, "\r\n") == 0)
 			break;
+		if(strstr(buf, "Content-Length: ") != NULL){//get contentlength string
+			sscanf(buf, "Content-Length: %s", contentlength);
+		}
 	}
-
+	printf("contentl: %s\n", contentlength);
 	//read the html body and write to client
 	while(1){
 		Rio_writen(fd, buf, strlen(buf));
-		Rio_readlineb(&rio, buf, MAXLINE);
-		printf("%s",buf);
-		if(strcmp(buf, "\r\n") == 0 || strstr(buf, "</html>")) //fix
+		if (Rio_readlineb(&rio, buf, MAXLINE) <= 0) break;
+		printf("body: %s",buf);
+		if(strcmp(buf, "\r\n") == 0 || strstr(buf, "</html>")) //temp solution, problem here needs fix.
                         break;
 	} 
 	Close(serverfd);
