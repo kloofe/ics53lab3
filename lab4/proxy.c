@@ -26,14 +26,74 @@ void foo(int fd) {
 	int serverfd;
 	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
 	char hostname[MAXLINE], port[MAXLINE];
+	char request[MAXLINE] = {};
 	char temp[MAXLINE];
+	int n;	
 	rio_t rio;
 
 	Rio_readinitb(&rio, fd);
-	Rio_readlineb(&rio, buf, MAXLINE);
+ 	Rio_readlineb(&rio, buf, MAXLINE); //get the first line http request
 	sscanf(buf, "%s %s %s", method, uri, version);
-	parse_uri(uri, hostname, port);
-	serverfd = Open_clientfd(uri, "80");
+ 	Rio_readlineb(&rio, buf, MAXLINE);//Host: web:port line if 1.1 
+	sscanf(buf, "Host: %s", hostname);
+	printf("debug header request: %s, %s, %s, %s", method, uri, version, hostname);
+	
+	//loop through rest of request
+ 	while(1){
+	//	printf("line: %s", buf);
+		if ((n = Rio_readlineb(&rio, buf, MAXLINE)) <= 0){
+			printf("Can't read request from client to end server\n");
+			fflush(stdout);
+			return;
+		}
+		if (strcmp(buf, "\r\n") == 0)
+			break;
+		strcat(request, buf); 	
+	}
+	//printf("request: %s \n strlen: %zd\n", request,strlen(request));
+	printf("debug Method: %s\n", method);
+	if (strncmp(method, "GET", 3) != 0){
+		printf("Non-get request\n");
+		return;
+	}
+	//need to parse here
+	//parse_uri(uri, hostname, port);
+	strcpy(temp, "GET /~harris/test.html HTTP/1.1\r\nHost: www.ics.uci.edu\r\n\r\n");
+	printf("temp: %zd\n",strlen(temp));
+	serverfd = Open_clientfd("www.ics.uci.edu", "80"); //connect to webserver
+ 	
+	//send request to end server
+ 	Rio_writen(serverfd, temp, strlen(temp));
+	Rio_writen(serverfd, request, strlen(request));
+	
+	//opens empty read buffer associated to serverfd
+	Rio_readinitb(&rio, serverfd);
+	
+	//grab first line to check if ok header response
+	Rio_readlineb(&rio, buf, MAXLINE); 
+	if (strstr(buf, "OK") == NULL){
+		Close(serverfd);
+		return;
+	}
+
+	//prepare for reading rest of header.. if has content-length keep
+	while(1){
+		Rio_readlineb(&rio, buf, MAXLINE);
+		printf("%s", buf);
+		if(strcmp(buf, "\r\n") == 0)
+			break;
+	}
+
+	//read the html body and write to client
+	while(1){
+		Rio_writen(fd, buf, strlen(buf));
+		Rio_readlineb(&rio, buf, MAXLINE);
+		printf("%s",buf);
+		if(strcmp(buf, "\r\n") == 0 || strstr(buf, "</html>")) //fix
+                        break;
+	} 
+	Close(serverfd);
+/*
 	Rio_writen(serverfd, method, strlen(method));
 	Rio_writen(serverfd, " ", strlen(" "));
 	Rio_writen(serverfd, uri, strlen(uri));
@@ -41,11 +101,7 @@ void foo(int fd) {
 	
 	Rio_readinitb(&rio, serverfd);
 	Rio_readlineb(&rio, buf, MAXLINE);
-	sscanf(buf, "%s", temp);
-	printf("WHAT IS THIS: %s", temp);
-	
-
-	//read_request(&rio);
+*/
 }
 
 int main(int argc, char **argv) {
