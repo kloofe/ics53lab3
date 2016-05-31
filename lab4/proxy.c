@@ -1,6 +1,6 @@
 #include "csapp.h"
 
-void parse_uri(char* uri, char* hostname) {
+void parse_uri(char* uri, char* hostname, char* path) {
 	//parse uri (which will then be path)
 	char substr[MAXLINE] = {};
 	char *temp, *uritemp;
@@ -8,17 +8,50 @@ void parse_uri(char* uri, char* hostname) {
 	temp = strchr(uritemp, '/');
 	if (temp != NULL){
 		strncpy(substr, temp, strlen(temp));
-		strncpy(uri, substr, strlen(uri));
-		printf("substr: %s uri: %s \n", substr, uri);
+		strncpy(path, substr, strlen(uri));
+		printf("substr: %s \npath: %s \n", substr, path);
 	}
+}
+
+int write_log(char *hostname, char* uri, char *cl){
+	FILE *log;
+	struct addrinfo *p, *listp, info;
+	int flag, spanlen;
+	char buf[20];
+	char uriparsed[MAXLINE]={};
+	char *temp;
+	//get time
+	time_t now = time(0);	
+	char cday[4], nday[4], month[4], time[8], year[4]; 
+	sscanf(ctime(&now), "%s %s %s %s %s", cday, month, nday, time, year);
+	//get ip address
+	memset(&info, 0, sizeof(struct addrinfo));
+	info.ai_family = AF_INET;
+	info.ai_socktype = SOCK_STREAM;
+	Getaddrinfo(hostname, NULL, &info, &listp);
+	flag = NI_NUMERICHOST;
+	p = listp;
+	Getnameinfo(p->ai_addr, p->ai_addrlen, buf, MAXLINE, NULL, 0, flag);
+	Freeaddrinfo(listp);
+	//reparse uri
+	temp = uri+7;
+	spanlen = strcspn(temp, "/");
+	strncpy(uriparsed, uri, spanlen+7);
+	//open file and write to it
+	log = fopen("proxy.log", "a");
+	if (log == NULL) return -1;
+	fprintf(log, "%s %s %s %s %s GMT: %s %s/ %s\n",cday, nday, month, year, time, buf, uriparsed, cl);
+	fclose(log);	
+	return 0;
 }
 
 void foo(int fd) {
 	int serverfd;
-	char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];
-	char hostname[MAXLINE];
+	char method[20], uri[MAXLINE], path[MAXLINE], version[20];
+	char hostname[MAXLINE] = {};
 	char request[MAXLINE] = {};
 	char temp[MAXLINE]= {};
+	char buf[MAXLINE]={};
 	int n;
 	char contentlength[20];	
 	rio_t rio;
@@ -28,11 +61,11 @@ void foo(int fd) {
 	sscanf(buf, "%s %s %s", method, uri, version);
  	Rio_readlineb(&rio, buf, MAXLINE);//Host: web:port line if 1.1 
 	sscanf(buf, "Host: %s", hostname);
-	printf("debug header request: %s, %s, %s, %s\n", method, uri, version, hostname);
+	printf("--debug header request: %s, %s, %s, %s\n", method, uri, version, hostname);
 	
 	//loop through rest of request
  	while(1){
-		printf("buf: %s\n", buf);
+		printf("buf: %s", buf);
 		if ((n = Rio_readlineb(&rio, buf, MAXLINE)) <= 0){
 			printf("Can't read request from client to end server\n");
 			fflush(stdout);
@@ -43,16 +76,18 @@ void foo(int fd) {
 		strcat(request, buf); 	
 	}
 	//printf("request: %s \n strlen: %zd\n", request,strlen(request));
-	printf("debug Method: %s\n", method);
+	printf("--debug Method: %s\n", method);
 	if (strncmp(method, "GET", 3) != 0){
 		printf("Non-get request\n");
 		return;
 	}
+
+	int tempnum;
 	//parsing here
-	parse_uri(uri, hostname); //replace uri with path
+	parse_uri(uri, hostname, path); 
 	printf("uri after parse: %s\n", uri);
 	strcpy(temp, "GET ");
-	strcat(temp, uri);
+	strcat(temp, path);
 	strcat(temp, " ");
 	strcat(temp, version);
 	strcat(temp, "\r\nHost: ");
@@ -60,8 +95,7 @@ void foo(int fd) {
 //	strcat(temp, "\r\n\r\n");
 	strcat(temp, "\r\nConnection: close\r\n\r\n");
 //	strcpy(temp, "GET /~harris/test.html HTTP/1.1\r\nHost: www.ics.uci.edu\r\n\r\n");
-	printf("temp: %s\n",temp);
-	printf("templen: %zd\n",strlen(temp));
+	printf("--get request: %s\n",temp);
 	serverfd = Open_clientfd(hostname, "80"); //connect to webserver
  	
 	//send request to end server
@@ -89,16 +123,19 @@ void foo(int fd) {
 			sscanf(buf, "Content-Length: %s", contentlength);
 		}
 	}
-	printf("contentl: %s\n", contentlength);
+
+	if ((tempnum = write_log(hostname, uri, contentlength)) < 0)
+	{
+		printf("Couldn't write to proxy.log");
+	}
 	//read the html body and write to client
 	while(1){
 		Rio_writen(fd, buf, strlen(buf));
 		if (Rio_readlineb(&rio, buf, MAXLINE) <= 0) break;
 		printf("body: %s",buf);
-		if(strcmp(buf, "\r\n") == 0 || strstr(buf, "</html>")) //temp solution, problem here needs fix.
-                        break;
 	} 
 	Close(serverfd);
+	Close(fd);
 /*
 	Rio_writen(serverfd, method, strlen(method));
 	Rio_writen(serverfd, " ", strlen(" "));
@@ -115,7 +152,7 @@ int main(int argc, char **argv) {
 	char hostname[MAXLINE], port[MAXLINE];
 	socklen_t clientlen;
 	struct sockaddr_storage clientaddr;
-
+	
 	if(argc != 2) {
 		exit(1);
 	}
@@ -126,7 +163,6 @@ int main(int argc, char **argv) {
 		Getnameinfo((SA *) &clientaddr, clientlen, hostname, 1024, port, 1024, 0);
 		printf("Accepted connection from (%s, %s)\n", hostname, port);
 		foo(connfd);
-		Close(connfd);
 	}
 	return 0;
 }
